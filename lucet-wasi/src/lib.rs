@@ -1,15 +1,18 @@
 #![deny(bare_trait_objects)]
 
-mod bindings;
 pub mod c_api;
-pub mod wasi;
-
-// Lucet-specific wrappers of wasi-common:
-pub use bindings::bindings;
-pub use wasi::export_wasi_funcs;
+mod wasi;
 
 // Wasi-common re-exports:
-pub use wasi_common::{wasi::__wasi_exitcode_t, Error, WasiCtx, WasiCtxBuilder};
+pub use wasi_common::{wasi::types::Exitcode, WasiCtx, WasiCtxBuilder};
 
 // Wasi executables export the following symbol for the entry point:
 pub const START_SYMBOL: &str = "_start";
+
+pub fn export_wasi_funcs() {
+    wasi::hostcalls::init()
+}
+
+pub fn bindings() -> lucet_module::bindings::Bindings {
+    lucet_wiggle_generate::bindings(&wasi_common::wasi::metadata::document())
+}
