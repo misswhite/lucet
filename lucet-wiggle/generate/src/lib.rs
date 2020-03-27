@@ -64,10 +64,7 @@ pub fn generate(
                 pub fn #name(vmctx: &mut lucet_runtime::vmctx::Vmctx, #(#func_args),*) -> #rets {
                     let memory= lucet_wiggle_runtime::LucetMemory::new(vmctx);
                     let mut ctx: #ctx_type = #ctx_constructor;
-                    // XXX this is wrong - need to configure the types path and the
-                    // module / abi funcs path separately. need lucet-specific abi funcs?
-                    // or to generate abi funcs that are generic on ctx over in wiggle-generate.
-                    #wiggle_mod_path::#mod_name::#method_name(&ctx, &memory, #(#call_args),*)
+                    super::#mod_name::#method_name(&ctx, &memory, #(#call_args),*)
                 }
             }
         });
