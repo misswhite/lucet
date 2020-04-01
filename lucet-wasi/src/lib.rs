@@ -5,7 +5,7 @@
 
 use lucet_runtime::vmctx::Vmctx;
 use lucet_runtime::{lucet_hostcall, lucet_hostcall_terminate};
-use wiggle::GuestPtr;
+use wiggle::{GuestError, GuestPtr};
 
 // Wasi-common re-exports:
 pub use wasi_common::{WasiCtx, WasiCtxBuilder};
@@ -33,6 +33,12 @@ lucet_wasi_generate::bindings!({
     ctx: LucetWasiCtx,
     constructor: { LucetWasiCtx { vmctx } }
 });
+
+impl<'a> types::GuestErrorConversion for LucetWasiCtx<'a> {
+    fn into_errno(&self, e: GuestError) -> types::Errno {
+        types::Errno::Inval
+    }
+}
 
 impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
     fn args_get<'b>(
