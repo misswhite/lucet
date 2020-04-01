@@ -3,8 +3,9 @@
 // disabled for now
 //pub mod c_api;
 
-use lucet_runtime::vmctx::Vmctx;
-use lucet_runtime::{lucet_hostcall, lucet_hostcall_terminate};
+use lucet_runtime::{lucet_hostcall_terminate, vmctx::Vmctx};
+use std::cell::Ref;
+use wasi_common::wasi::wasi_snapshot_preview1::WasiSnapshotPreview1;
 use wiggle::{GuestError, GuestPtr};
 
 // Wasi-common re-exports:
@@ -25,6 +26,12 @@ pub struct LucetWasiCtx<'a> {
     vmctx: &'a Vmctx,
 }
 
+impl<'a> LucetWasiCtx<'a> {
+    pub fn wasi(&self) -> Ref<WasiCtx> {
+        self.vmctx.get_embed_ctx()
+    }
+}
+
 pub mod types {
     pub use wasi_common::wasi::types::*;
 }
@@ -35,7 +42,8 @@ lucet_wasi_generate::bindings!({
 });
 
 impl<'a> types::GuestErrorConversion for LucetWasiCtx<'a> {
-    fn into_errno(&self, e: GuestError) -> types::Errno {
+    fn into_errno(&self, _e: GuestError) -> types::Errno {
+        // TODO log error
         types::Errno::Inval
     }
 }
@@ -46,11 +54,11 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         argv: &GuestPtr<'b, GuestPtr<'b, u8>>,
         argv_buf: &GuestPtr<'b, u8>,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().args_get(argv, argv_buf)
     }
 
     fn args_sizes_get(&self) -> Result<(types::Size, types::Size), types::Errno> {
-        unimplemented!()
+        self.wasi().args_sizes_get()
     }
 
     fn environ_get<'b>(
@@ -58,23 +66,23 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         environ: &GuestPtr<'b, GuestPtr<'b, u8>>,
         environ_buf: &GuestPtr<'b, u8>,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().environ_get(environ, environ_buf)
     }
 
     fn environ_sizes_get(&self) -> Result<(types::Size, types::Size), types::Errno> {
-        unimplemented!()
+        self.wasi().environ_sizes_get()
     }
 
     fn clock_res_get(&self, id: types::Clockid) -> Result<types::Timestamp, types::Errno> {
-        unimplemented!()
+        self.wasi().clock_res_get(id)
     }
 
     fn clock_time_get(
         &self,
         id: types::Clockid,
-        _precision: types::Timestamp,
+        precision: types::Timestamp,
     ) -> Result<types::Timestamp, types::Errno> {
-        unimplemented!()
+        self.wasi().clock_time_get(id, precision)
     }
 
     fn fd_advise(
@@ -84,7 +92,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         len: types::Filesize,
         advice: types::Advice,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_advise(fd, offset, len, advice)
     }
 
     fn fd_allocate(
@@ -93,19 +101,19 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         offset: types::Filesize,
         len: types::Filesize,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_allocate(fd, offset, len)
     }
 
     fn fd_close(&self, fd: types::Fd) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_close(fd)
     }
 
     fn fd_datasync(&self, fd: types::Fd) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_datasync(fd)
     }
 
     fn fd_fdstat_get(&self, fd: types::Fd) -> Result<types::Fdstat, types::Errno> {
-        unimplemented!()
+        self.wasi().fd_fdstat_get(fd)
     }
 
     fn fd_fdstat_set_flags(
@@ -113,7 +121,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         fd: types::Fd,
         flags: types::Fdflags,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_fdstat_set_flags(fd, flags)
     }
 
     fn fd_fdstat_set_rights(
@@ -122,11 +130,12 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         fs_rights_base: types::Rights,
         fs_rights_inheriting: types::Rights,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi()
+            .fd_fdstat_set_rights(fd, fs_rights_base, fs_rights_inheriting)
     }
 
     fn fd_filestat_get(&self, fd: types::Fd) -> Result<types::Filestat, types::Errno> {
-        unimplemented!()
+        self.wasi().fd_filestat_get(fd)
     }
 
     fn fd_filestat_set_size(
@@ -134,7 +143,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         fd: types::Fd,
         size: types::Filesize,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_filestat_set_size(fd, size)
     }
 
     fn fd_filestat_set_times(
@@ -144,7 +153,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         mtim: types::Timestamp,
         fst_flags: types::Fstflags,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_filestat_set_times(fd, atim, mtim, fst_flags)
     }
 
     fn fd_pread(
@@ -153,11 +162,11 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         iovs: &types::IovecArray<'_>,
         offset: types::Filesize,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!()
+        self.wasi().fd_pread(fd, iovs, offset)
     }
 
     fn fd_prestat_get(&self, fd: types::Fd) -> Result<types::Prestat, types::Errno> {
-        unimplemented!()
+        self.wasi().fd_prestat_get(fd)
     }
 
     fn fd_prestat_dir_name(
@@ -166,7 +175,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         path: &GuestPtr<u8>,
         path_len: types::Size,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_prestat_dir_name(fd, path, path_len)
     }
 
     fn fd_pwrite(
@@ -175,7 +184,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         ciovs: &types::CiovecArray<'_>,
         offset: types::Filesize,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!();
+        self.wasi().fd_pwrite(fd, ciovs, offset)
     }
 
     fn fd_read(
@@ -183,7 +192,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         fd: types::Fd,
         iovs: &types::IovecArray<'_>,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!();
+        self.wasi().fd_read(fd, iovs)
     }
 
     fn fd_readdir(
@@ -193,11 +202,11 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         buf_len: types::Size,
         cookie: types::Dircookie,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!();
+        self.wasi().fd_readdir(fd, buf, buf_len, cookie)
     }
 
     fn fd_renumber(&self, from: types::Fd, to: types::Fd) -> Result<(), types::Errno> {
-        unimplemented!();
+        self.wasi().fd_renumber(from, to)
     }
 
     fn fd_seek(
@@ -206,15 +215,15 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         offset: types::Filedelta,
         whence: types::Whence,
     ) -> Result<types::Filesize, types::Errno> {
-        unimplemented!()
+        self.wasi().fd_seek(fd, offset, whence)
     }
 
     fn fd_sync(&self, fd: types::Fd) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().fd_sync(fd)
     }
 
     fn fd_tell(&self, fd: types::Fd) -> Result<types::Filesize, types::Errno> {
-        unimplemented!()
+        self.wasi().fd_tell(fd)
     }
 
     fn fd_write(
@@ -222,7 +231,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         fd: types::Fd,
         ciovs: &types::CiovecArray<'_>,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!()
+        self.wasi().fd_write(fd, ciovs)
     }
 
     fn path_create_directory(
@@ -230,7 +239,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         dirfd: types::Fd,
         path: &GuestPtr<'_, str>,
     ) -> Result<(), types::Errno> {
-        unimplemented!();
+        self.wasi().path_create_directory(dirfd, path)
     }
 
     fn path_filestat_get(
@@ -239,7 +248,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         flags: types::Lookupflags,
         path: &GuestPtr<'_, str>,
     ) -> Result<types::Filestat, types::Errno> {
-        unimplemented!();
+        self.wasi().path_filestat_get(dirfd, flags, path)
     }
 
     fn path_filestat_set_times(
@@ -251,7 +260,8 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         mtim: types::Timestamp,
         fst_flags: types::Fstflags,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi()
+            .path_filestat_set_times(dirfd, flags, path, atim, mtim, fst_flags)
     }
 
     fn path_link(
@@ -262,7 +272,8 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         new_fd: types::Fd,
         new_path: &GuestPtr<'_, str>,
     ) -> Result<(), types::Errno> {
-        unimplemented!();
+        self.wasi()
+            .path_link(old_fd, old_flags, old_path, new_fd, new_path)
     }
 
     fn path_open(
@@ -275,7 +286,15 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         fs_rights_inheriting: types::Rights,
         fdflags: types::Fdflags,
     ) -> Result<types::Fd, types::Errno> {
-        unimplemented!();
+        self.wasi().path_open(
+            dirfd,
+            dirflags,
+            path,
+            oflags,
+            fs_rights_base,
+            fs_rights_inheriting,
+            fdflags,
+        )
     }
 
     fn path_readlink(
@@ -285,7 +304,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         buf: &GuestPtr<u8>,
         buf_len: types::Size,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!();
+        self.wasi().path_readlink(dirfd, path, buf, buf_len)
     }
 
     fn path_remove_directory(
@@ -293,7 +312,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         dirfd: types::Fd,
         path: &GuestPtr<'_, str>,
     ) -> Result<(), types::Errno> {
-        unimplemented!();
+        self.wasi().path_remove_directory(dirfd, path)
     }
 
     fn path_rename(
@@ -303,7 +322,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         new_fd: types::Fd,
         new_path: &GuestPtr<'_, str>,
     ) -> Result<(), types::Errno> {
-        unimplemented!();
+        self.wasi().path_rename(old_fd, old_path, new_fd, new_path)
     }
 
     fn path_symlink(
@@ -312,7 +331,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         dirfd: types::Fd,
         new_path: &GuestPtr<'_, str>,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().path_symlink(old_path, dirfd, new_path)
     }
 
     fn path_unlink_file(
@@ -320,7 +339,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         dirfd: types::Fd,
         path: &GuestPtr<'_, str>,
     ) -> Result<(), types::Errno> {
-        unimplemented!()
+        self.wasi().path_unlink_file(dirfd, path)
     }
 
     fn poll_oneoff(
@@ -329,23 +348,23 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         out: &GuestPtr<types::Event>,
         nsubscriptions: types::Size,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!()
+        self.wasi().poll_oneoff(in_, out, nsubscriptions)
     }
 
     fn proc_exit(&self, rval: types::Exitcode) -> Result<(), ()> {
-        unimplemented!()
+        lucet_hostcall_terminate!(rval)
     }
 
     fn proc_raise(&self, _sig: types::Signal) -> Result<(), types::Errno> {
-        unimplemented!()
+        Err(types::Errno::Inval)
     }
 
     fn sched_yield(&self) -> Result<(), types::Errno> {
-        unimplemented!()
+        Ok(())
     }
 
     fn random_get(&self, buf: &GuestPtr<u8>, buf_len: types::Size) -> Result<(), types::Errno> {
-        unimplemented!();
+        self.wasi().random_get(buf, buf_len)
     }
 
     fn sock_recv(
@@ -354,7 +373,7 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         _ri_data: &types::IovecArray<'_>,
         _ri_flags: types::Riflags,
     ) -> Result<(types::Size, types::Roflags), types::Errno> {
-        unimplemented!()
+        Err(types::Errno::Inval)
     }
 
     fn sock_send(
@@ -363,10 +382,10 @@ impl<'a> wasi_snapshot_preview1::WasiSnapshotPreview1 for LucetWasiCtx<'a> {
         _si_data: &types::CiovecArray<'_>,
         _si_flags: types::Siflags,
     ) -> Result<types::Size, types::Errno> {
-        unimplemented!()
+        Err(types::Errno::Inval)
     }
 
     fn sock_shutdown(&self, _fd: types::Fd, _how: types::Sdflags) -> Result<(), types::Errno> {
-        unimplemented!()
+        Err(types::Errno::Inval)
     }
 }
