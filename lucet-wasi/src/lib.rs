@@ -22,6 +22,10 @@ pub fn bindings() -> lucet_module::bindings::Bindings {
     lucet_wiggle_generate::bindings(&wasi_common::wasi::metadata::document())
 }
 
+pub fn document() -> wiggle::witx::Document {
+    wasi_common::wasi::metadata::document()
+}
+
 pub struct LucetWasiCtx<'a> {
     vmctx: &'a Vmctx,
 }
