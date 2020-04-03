@@ -6,7 +6,7 @@
   (func $read (import "wasi_snapshot_preview1" "fd_read") (type 0))
 
   ;; import fd_write, this is also fine.
-  (func $write (import "wasi_snapshshot_preview1" "fd_write") (type 0))
+  (func $write (import "wasi_snapshot_preview1" "fd_write") (type 0))
 
   ;; import fd_read, again, under a different name!
   ;; this is to test that we join together the imports.
